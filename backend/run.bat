@@ -1,0 +1,3 @@
+@echo off
+echo Starting EventMate Backend...
+mvn spring-boot:run
