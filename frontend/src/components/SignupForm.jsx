@@ -66,7 +66,7 @@ const SignupForm = ({ onSignup }) => {
       setIsSubmitting(true);
       // Call backend API
       try {
-        const response = await fetch('http://localhost:8082/api/auth/signup', {
+        const response = await fetch('http://localhost:8083/api/auth/signup', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

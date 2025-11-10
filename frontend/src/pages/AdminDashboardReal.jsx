@@ -12,10 +12,14 @@ const AdminDashboardReal = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [bookings, setBookings] = useState([]);
   const [events, setEvents] = useState([]);
+  const [enquiries, setEnquiries] = useState([]); // Add this line
   const [activeTab, setActiveTab] = useState('notifications');
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventData, setEventData] = useState({ name: '', description: '', eventDate: '' });
+  const [replyMessage, setReplyMessage] = useState(''); // Add this line for reply message
+  const [selectedEnquiry, setSelectedEnquiry] = useState(null); // Add this line for selected enquiry
+  const [showReplyForm, setShowReplyForm] = useState(false); // Add this line for reply form visibility
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -26,6 +30,7 @@ const AdminDashboardReal = () => {
       fetchNotifications();
       fetchBookings();
       fetchEvents();
+      fetchEnquiries(); // Add this line
     }
   }, [navigate]);
 
@@ -61,6 +66,17 @@ const AdminDashboardReal = () => {
       console.error('Error fetching events:', error);
       // Even if there's an error, we should still show an empty array or handle it properly
       setEvents([]);
+    }
+  };
+
+  const fetchEnquiries = async () => {
+    try {
+      const data = await ApiService.getEnquiries();
+      setEnquiries(data);
+    } catch (error) {
+      console.error('Error fetching enquiries:', error);
+      // Even if there's an error, we should still show an empty array or handle it properly
+      setEnquiries([]);
     }
   };
 
@@ -110,8 +126,36 @@ const AdminDashboardReal = () => {
   };
 
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    // Handle null or undefined dates by showing current date
+    if (!dateString) {
+      const now = new Date();
+      const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      };
+      return now.toLocaleDateString(undefined, options);
+    }
+    
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      };
+      return date.toLocaleDateString(undefined, options);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getStatusColor = (status) => {
@@ -192,8 +236,114 @@ const AdminDashboardReal = () => {
     }
   };
 
+  // Add this function for handling enquiry replies
+  const handleReplyToEnquiry = async (enquiryId, replyMessage) => {
+    try {
+      // Find the notification related to this enquiry
+      // The message format is "User {name} has submitted an enquiry: {subject}"
+      const relatedNotification = notifications.find(n => 
+        n.title === 'New Enquiry' && 
+        n.message.includes(`: ${selectedEnquiry?.subject}`)
+      );
+      
+      // Send the reply to the backend
+      const response = await ApiService.replyToEnquiry(enquiryId, replyMessage);
+      
+      // Mark the original notification as read if found
+      if (relatedNotification) {
+        await markAsRead(relatedNotification.id);
+      }
+      
+      alert('Reply sent to user successfully!');
+      
+      // Close the reply form
+      setShowReplyForm(false);
+      setReplyMessage('');
+      setSelectedEnquiry(null);
+      
+      // Refresh data
+      await fetchEnquiries();
+      await fetchNotifications();
+      
+      // Update unread count manually to ensure it's correct
+      const updatedNotifications = await ApiService.getNotifications();
+      setNotifications(updatedNotifications);
+      setUnreadCount(updatedNotifications.filter(n => !n.isRead).length);
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      alert('Error sending reply. Please try again.');
+    }
+  };
+
+  // Add this function for opening the reply form
+  const openReplyForm = (enquiry) => {
+    setSelectedEnquiry(enquiry);
+    setReplyMessage('');
+    setShowReplyForm(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Reply Form Modal */}
+      {showReplyForm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowReplyForm(false)}></div>
+            <div className="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg font-medium leading-6 text-gray-900">Reply to Enquiry</h3>
+                    <div className="mt-2">
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">Subject</label>
+                        <div className="mt-1 text-gray-900 font-medium">{selectedEnquiry?.subject}</div>
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">From</label>
+                        <div className="mt-1 text-gray-900">{selectedEnquiry?.user.fullName} ({selectedEnquiry?.user.email})</div>
+                      </div>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700">Message</label>
+                        <div className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-md">{selectedEnquiry?.message}</div>
+                      </div>
+                      <div className="mb-4">
+                        <label htmlFor="replyMessage" className="block text-sm font-medium text-gray-700">Your Reply</label>
+                        <textarea
+                          id="replyMessage"
+                          rows={4}
+                          className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          value={replyMessage}
+                          onChange={(e) => setReplyMessage(e.target.value)}
+                          placeholder="Enter your reply here..."
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => handleReplyToEnquiry(selectedEnquiry?.id, replyMessage)}
+                >
+                  Send Reply
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowReplyForm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Event Form Modal */}
       {showEventForm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -303,6 +453,17 @@ const AdminDashboardReal = () => {
                   Bookings
                 </button>
                 <button 
+                  onClick={() => setActiveTab('enquiries')}
+                  className={`${
+                    activeTab === 'enquiries' 
+                      ? 'bg-gray-100 text-gray-900' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  } group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left`}
+                >
+                  <Bell className="mr-4 h-6 w-6 text-gray-500" />
+                  Enquiries
+                </button>
+                <button 
                   onClick={() => setActiveTab('events')}
                   className={`${
                     activeTab === 'events' 
@@ -356,6 +517,17 @@ const AdminDashboardReal = () => {
                   >
                     <Calendar className="mr-3 h-6 w-6 text-gray-500" />
                     Bookings
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('enquiries')}
+                    className={`${
+                      activeTab === 'enquiries' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                  >
+                    <Bell className="mr-3 h-6 w-6 text-gray-500" />
+                    Enquiries
                   </button>
                   <button 
                     onClick={() => setActiveTab('events')}
@@ -485,8 +657,36 @@ const AdminDashboardReal = () => {
                                           </button>
                                         </div>
                                       )}
+                                      {notification.title === 'New Enquiry' && !notification.isRead && (
+                                        <div className="mt-2 flex space-x-2">
+                                          <button
+                                            onClick={() => {
+                                              // Find the enquiry related to this notification
+                                              // Extract the subject from the notification message
+                                              // Message format: "User {name} has submitted an enquiry: {subject}"
+                                              const messageParts = notification.message.split(': ');
+                                              if (messageParts.length > 1) {
+                                                const subject = messageParts[1];
+                                                const relatedEnquiry = enquiries.find(e => e.subject === subject);
+                                                if (relatedEnquiry) {
+                                                  openReplyForm(relatedEnquiry);
+                                                } else {
+                                                  // If we can't find by subject, try to find by user
+                                                  const relatedEnquiryByUser = enquiries.find(e => e.user.id === notification.user.id);
+                                                  if (relatedEnquiryByUser) {
+                                                    openReplyForm(relatedEnquiryByUser);
+                                                  }
+                                                }
+                                              }
+                                            }}
+                                            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                                          >
+                                            Reply
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
-                                    {!notification.isRead && notification.title !== 'New Booking Request' && (
+                                    {!notification.isRead && notification.title !== 'New Booking Request' && notification.title !== 'New Enquiry' && (
                                       <div className="flex-shrink-0">
                                         <button
                                           onClick={() => markAsRead(notification.id)}
@@ -578,6 +778,57 @@ const AdminDashboardReal = () => {
                                 </table>
                               </div>
                             </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {activeTab === 'enquiries' && (
+                      <div className="bg-white rounded-xl shadow-md p-6">
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-xl font-semibold text-gray-800">Enquiries</h2>
+                        </div>
+                        {enquiries.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Bell className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No enquiries</h3>
+                            <p className="mt-1 text-sm text-gray-500">There are no user enquiries yet.</p>
+                          </div>
+                        ) : (
+                          <div className="flow-root">
+                            <ul className="divide-y divide-gray-200">
+                              {enquiries.map((enquiry) => (
+                                <li key={enquiry.id} className="py-4">
+                                  <div className="flex items-center">
+                                    <div className="min-w-0 flex-1 px-4">
+                                      <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-gray-900">{enquiry.subject}</h3>
+                                        <p className="text-sm text-gray-500">{formatDate(enquiry.createdAt)}</p>
+                                      </div>
+                                      <div className="mt-1">
+                                        <p className="text-sm text-gray-500">From: {enquiry.user.fullName} ({enquiry.user.email})</p>
+                                        <p className="mt-2 text-sm text-gray-700">{enquiry.message}</p>
+                                      </div>
+                                      <div className="mt-3 flex space-x-2">
+                                        <button
+                                          onClick={() => openReplyForm(enquiry)}
+                                          className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                                        >
+                                          Reply
+                                        </button>
+                                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                                          enquiry.status === 'OPEN' ? 'bg-yellow-100 text-yellow-800' :
+                                          enquiry.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                                          'bg-green-100 text-green-800'
+                                        }`}>
+                                          {enquiry.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                       </div>

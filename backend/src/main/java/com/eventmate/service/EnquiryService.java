@@ -39,4 +39,15 @@ public class EnquiryService {
     public List<Enquiry> getEnquiriesByStatus(String status) {
         return enquiryRepository.findByStatus(status);
     }
+
+    // Add this method for updating enquiry status
+    public Enquiry updateEnquiryStatus(Long id, String status) {
+        Optional<Enquiry> enquiryOptional = enquiryRepository.findById(id);
+        if (enquiryOptional.isPresent()) {
+            Enquiry enquiry = enquiryOptional.get();
+            enquiry.setStatus(status);
+            return enquiryRepository.save(enquiry);
+        }
+        return null;
+    }
 }

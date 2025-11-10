@@ -1,9 +1,10 @@
 // API service for handling HTTP requests
-const API_BASE_URL = 'http://localhost:8082/api';
+const API_BASE_URL = 'http://localhost:8083/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const user = JSON.parse(localStorage.getItem('currentUser'));
+  console.log('Current user:', user); // Debug log
   return user && user.token ? {
     'Authorization': `Bearer ${user.token}`,
     'Content-Type': 'application/json',
@@ -93,23 +94,29 @@ class ApiService {
 
   // Bookings
   static async getBookings() {
+    const headers = getAuthHeaders();
+    console.log('Booking headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/bookings`, {
-      headers: getAuthHeaders()
+      headers: headers
     });
     return response.json();
   }
 
   static async getBookingsByUserId(userId) {
+    const headers = getAuthHeaders();
+    console.log('Booking by user headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/bookings/user/${userId}`, {
-      headers: getAuthHeaders()
+      headers: headers
     });
     return response.json();
   }
 
   static async createBooking(bookingData) {
+    const headers = getAuthHeaders();
+    console.log('Create booking headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(bookingData),
     });
     
@@ -124,9 +131,11 @@ class ApiService {
   }
 
   static async updateBooking(id, bookingData) {
+    const headers = getAuthHeaders();
+    console.log('Update booking headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/bookings/${id}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(bookingData),
     });
     
@@ -142,17 +151,60 @@ class ApiService {
 
   // Enquiries
   static async getEnquiries() {
+    const headers = getAuthHeaders();
+    console.log('Enquiries headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/enquiries`, {
-      headers: getAuthHeaders()
+      headers: headers
     });
     return response.json();
   }
 
   static async createEnquiry(enquiryData) {
+    const headers = getAuthHeaders();
+    console.log('Create enquiry headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/enquiries`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: headers,
       body: JSON.stringify(enquiryData),
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
+  static async updateEnquiry(id, enquiryData) {
+    const headers = getAuthHeaders();
+    console.log('Update enquiry headers:', headers); // Debug log
+    const response = await fetch(`${API_BASE_URL}/enquiries/${id}`, {
+      method: 'PUT',
+      headers: headers,
+      body: JSON.stringify(enquiryData),
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
+  // Add this method for replying to enquiries
+  static async replyToEnquiry(id, message) {
+    const headers = getAuthHeaders();
+    console.log('Reply to enquiry headers:', headers); // Debug log
+    const response = await fetch(`${API_BASE_URL}/enquiries/${id}/reply`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({ message: message }),
     });
     
     // Check if response is ok before trying to parse JSON
@@ -167,16 +219,20 @@ class ApiService {
 
   // Notifications
   static async getNotifications() {
+    const headers = getAuthHeaders();
+    console.log('Notifications headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/notifications`, {
-      headers: getAuthHeaders()
+      headers: headers
     });
     return response.json();
   }
 
   static async getNotificationsByUserId(userId) {
+    const headers = getAuthHeaders();
+    console.log('Notifications by user headers:', headers); // Debug log
     try {
       const response = await fetch(`${API_BASE_URL}/notifications/user/${userId}`, {
-        headers: getAuthHeaders()
+        headers: headers
       });
       
       // Check if response is ok before trying to parse JSON
@@ -195,9 +251,11 @@ class ApiService {
   }
 
   static async getUnreadNotificationsByUserId(userId) {
+    const headers = getAuthHeaders();
+    console.log('Unread notifications headers:', headers); // Debug log
     try {
       const response = await fetch(`${API_BASE_URL}/notifications/unread/${userId}`, {
-        headers: getAuthHeaders()
+        headers: headers
       });
       
       // Check if response is ok before trying to parse JSON
@@ -215,10 +273,36 @@ class ApiService {
     }
   }
 
+  static async createNotification(notificationData) {
+    const headers = getAuthHeaders();
+    console.log('Create notification headers:', headers); // Debug log
+    const response = await fetch(`${API_BASE_URL}/notifications`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify({
+        userId: notificationData.user.id,
+        title: notificationData.title,
+        message: notificationData.message,
+        relatedBookingId: notificationData.relatedBookingId
+      }),
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
   static async markNotificationAsRead(id) {
+    const headers = getAuthHeaders();
+    console.log('Mark notification as read headers:', headers); // Debug log
     const response = await fetch(`${API_BASE_URL}/notifications/${id}/mark-as-read`, {
       method: 'PUT',
-      headers: getAuthHeaders()
+      headers: headers
     });
     
     // Check if response is ok before trying to parse JSON

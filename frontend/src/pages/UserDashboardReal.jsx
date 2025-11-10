@@ -20,6 +20,9 @@ const UserDashboardReal = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('events');
+  const [showEventEnquiryForm, setShowEventEnquiryForm] = useState(false);
+  const [selectedEventForEnquiry, setSelectedEventForEnquiry] = useState(null);
+  const [eventEnquiryData, setEventEnquiryData] = useState({ subject: '', message: '' });
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -125,6 +128,23 @@ const UserDashboardReal = () => {
     }
   };
 
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await ApiService.markNotificationAsRead(notificationId);
+      
+      // Update local state
+      setNotifications(notifications.map(n => 
+        n.id === notificationId ? { ...n, isRead: true } : n
+      ));
+      setUnreadCount(prev => prev - 1);
+      
+      // Refresh notifications
+      fetchUserNotifications(currentUser.userId);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   const fetchUserBookings = async (userId) => {
     try {
       const data = await ApiService.getBookingsByUserId(userId);
@@ -138,6 +158,14 @@ const UserDashboardReal = () => {
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     navigate('/login');
+  };
+
+  const handleSetActiveTab = (tab) => {
+    setActiveTab(tab);
+    // Refresh notifications when switching to the notifications tab
+    if (tab === 'notifications' && currentUser) {
+      fetchUserNotifications(currentUser.userId);
+    }
   };
 
   const handleEnquirySubmit = async (e) => {
@@ -186,9 +214,57 @@ const UserDashboardReal = () => {
     }
   };
 
+  const handleEventEnquirySubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Include event information in the subject
+      const subjectWithEvent = `[${selectedEventForEnquiry?.name}] ${eventEnquiryData.subject}`;
+      
+      const enquiryDataWithUser = {
+        userId: currentUser.userId,
+        subject: subjectWithEvent,
+        message: eventEnquiryData.message
+      };
+      
+      await ApiService.createEnquiry(enquiryDataWithUser);
+      
+      alert('Enquiry submitted successfully!');
+      setEventEnquiryData({ subject: '', message: '' });
+      setShowEventEnquiryForm(false);
+      setSelectedEventForEnquiry(null);
+    } catch (error) {
+      console.error('Error submitting enquiry:', error);
+      alert('Error submitting enquiry. Please try again.');
+    }
+  };
+
+  const openEventEnquiryForm = (event) => {
+    setSelectedEventForEnquiry(event);
+    setEventEnquiryData({ subject: '', message: '' });
+    setShowEventEnquiryForm(true);
+  };
+
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    // Handle null or undefined dates
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      };
+      return date.toLocaleDateString(undefined, options);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
 
   const getStatusColor = (status) => {
@@ -332,6 +408,71 @@ const UserDashboardReal = () => {
         </div>
       )}
 
+      {/* Event-Specific Enquiry Form Modal */}
+      {showEventEnquiryForm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowEventEnquiryForm(false)}></div>
+            <div className="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg font-medium leading-6 text-gray-900">Enquire about: {selectedEventForEnquiry?.name}</h3>
+                    <div className="mt-2">
+                      <form onSubmit={handleEventEnquirySubmit}>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700">Event</label>
+                          <div className="mt-1 text-gray-900 font-medium">{selectedEventForEnquiry?.name}</div>
+                          <div className="mt-1 text-sm text-gray-500">{formatDate(selectedEventForEnquiry?.eventDate)}</div>
+                        </div>
+                        <div className="mb-4">
+                          <label htmlFor="eventEnquirySubject" className="block text-sm font-medium text-gray-700">Subject</label>
+                          <input
+                            type="text"
+                            id="eventEnquirySubject"
+                            className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            value={eventEnquiryData.subject}
+                            onChange={(e) => setEventEnquiryData({...eventEnquiryData, subject: e.target.value})}
+                            required
+                          />
+                        </div>
+                        <div className="mb-4">
+                          <label htmlFor="eventEnquiryMessage" className="block text-sm font-medium text-gray-700">Message</label>
+                          <textarea
+                            id="eventEnquiryMessage"
+                            rows={4}
+                            className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            value={eventEnquiryData.message}
+                            onChange={(e) => setEventEnquiryData({...eventEnquiryData, message: e.target.value})}
+                            required
+                          />
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleEventEnquirySubmit}
+                >
+                  Submit Enquiry
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex justify-center w-full px-4 py-2 mt-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowEventEnquiryForm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Mobile sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
@@ -346,7 +487,7 @@ const UserDashboardReal = () => {
             <div className="flex-1 overflow-y-auto">
               <nav className="px-2 py-4 space-y-1">
                 <button 
-                  onClick={() => setActiveTab('events')}
+                  onClick={() => handleSetActiveTab('events')}
                   className={`${
                     activeTab === 'events' 
                       ? 'bg-gray-100 text-gray-900' 
@@ -357,7 +498,7 @@ const UserDashboardReal = () => {
                   My Events
                 </button>
                 <button 
-                  onClick={() => setActiveTab('bookings')}
+                  onClick={() => handleSetActiveTab('bookings')}
                   className={`${
                     activeTab === 'bookings' 
                       ? 'bg-gray-100 text-gray-900' 
@@ -366,6 +507,22 @@ const UserDashboardReal = () => {
                 >
                   <Clock className="mr-4 h-6 w-6 text-gray-500" />
                   My Bookings
+                </button>
+                <button 
+                  onClick={() => handleSetActiveTab('notifications')}
+                  className={`${
+                    activeTab === 'notifications' 
+                      ? 'bg-gray-100 text-gray-900' 
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  } group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left`}
+                >
+                  <Bell className="mr-4 h-6 w-6 text-gray-500" />
+                  Notifications
+                  {unreadCount > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
                 <button 
                   onClick={() => setShowBookingForm(true)}
@@ -399,7 +556,7 @@ const UserDashboardReal = () => {
               <div className="mt-5 flex-1 flex flex-col">
                 <nav className="flex-1 px-2 space-y-1">
                   <button 
-                    onClick={() => setActiveTab('events')}
+                    onClick={() => handleSetActiveTab('events')}
                     className={`${
                       activeTab === 'events' 
                         ? 'bg-gray-100 text-gray-900' 
@@ -410,7 +567,7 @@ const UserDashboardReal = () => {
                     My Events
                   </button>
                   <button 
-                    onClick={() => setActiveTab('bookings')}
+                    onClick={() => handleSetActiveTab('bookings')}
                     className={`${
                       activeTab === 'bookings' 
                         ? 'bg-gray-100 text-gray-900' 
@@ -419,6 +576,22 @@ const UserDashboardReal = () => {
                   >
                     <Clock className="mr-3 h-6 w-6 text-gray-500" />
                     My Bookings
+                  </button>
+                  <button 
+                    onClick={() => handleSetActiveTab('notifications')}
+                    className={`${
+                      activeTab === 'notifications' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    } group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left`}
+                  >
+                    <Bell className="mr-3 h-6 w-6 text-gray-500" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
                   </button>
                   <button 
                     onClick={() => setShowBookingForm(true)}
@@ -552,14 +725,68 @@ const UserDashboardReal = () => {
                                   <div className="mt-6">
                                     <button 
                                       onClick={() => openBookingForm(event)}
-                                      className="w-full btn btn-secondary text-sm bg-blue-600 hover:bg-blue-700 text-white"
+                                      className="w-full btn btn-secondary text-sm bg-blue-600 hover:bg-blue-700 text-white mb-2"
                                     >
                                       Book Event
+                                    </button>
+                                    <button 
+                                      onClick={() => openEventEnquiryForm(event)}
+                                      className="w-full btn btn-secondary text-sm bg-green-600 hover:bg-green-700 text-white"
+                                    >
+                                      Ask Question
                                     </button>
                                   </div>
                                 </div>
                               </motion.div>
                             ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {activeTab === 'notifications' && (
+                      <div className="bg-white rounded-xl shadow-md p-6">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Notifications</h2>
+                        {notifications.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Bell className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900">No notifications</h3>
+                            <p className="mt-1 text-sm text-gray-500">You're all caught up!</p>
+                          </div>
+                        ) : (
+                          <div className="flow-root">
+                            <ul className="divide-y divide-gray-200">
+                              {notifications.map((notification) => (
+                                <li key={notification.id} className="py-4">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                      {notification.isRead ? (
+                                        <CheckCircle className="h-6 w-6 text-green-500" />
+                                      ) : (
+                                        <AlertCircle className="h-6 w-6 text-yellow-500" />
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1 px-4">
+                                      <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-gray-900">{notification.title}</h3>
+                                        <p className="text-sm text-gray-500">{formatDate(notification.createdAt)}</p>
+                                      </div>
+                                      <p className="mt-1 text-sm text-gray-500">{notification.message}</p>
+                                    </div>
+                                    {!notification.isRead && (
+                                      <div className="flex-shrink-0">
+                                        <button
+                                          onClick={() => markNotificationAsRead(notification.id)}
+                                          className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                                        >
+                                          Mark as read
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         )}
                       </div>

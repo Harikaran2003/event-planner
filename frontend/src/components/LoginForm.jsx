@@ -52,7 +52,7 @@ const LoginForm = ({ onLogin }) => {
       setIsSubmitting(true);
       // Call backend API
       try {
-        const response = await fetch('http://localhost:8082/api/auth/login', {
+        const response = await fetch('http://localhost:8083/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

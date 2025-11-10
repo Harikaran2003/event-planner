@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.eventmate.dto.NotificationRequest;
 import com.eventmate.model.Notification;
 import com.eventmate.model.User;
 import com.eventmate.service.NotificationService;
@@ -69,8 +70,26 @@ public class NotificationController {
     }
 
     @PostMapping
-    public Notification createNotification(@RequestBody Notification notification) {
-        return notificationService.saveNotification(notification);
+    public ResponseEntity<Notification> createNotification(@RequestBody NotificationRequest notificationRequest) {
+        // Get user
+        Optional<User> userOptional = userService.findById(notificationRequest.getUserId());
+        
+        if (!userOptional.isPresent()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        User user = userOptional.get();
+        
+        // Create notification
+        Notification notification = new Notification();
+        notification.setUser(user);
+        notification.setTitle(notificationRequest.getTitle());
+        notification.setMessage(notificationRequest.getMessage());
+        notification.setRelatedBookingId(notificationRequest.getRelatedBookingId());
+        
+        Notification savedNotification = notificationService.saveNotification(notification);
+        
+        return ResponseEntity.ok(savedNotification);
     }
 
     @PutMapping("/{id}/mark-as-read")
