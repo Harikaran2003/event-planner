@@ -47,10 +47,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                 // Allow public access to packages, services, and events endpoints
                 .requestMatchers("/api/packages/**", "/api/services/**", "/api/events/**").permitAll()
-                // Allow authenticated access to booking, enquiry, and notification endpoints
+                // Allow authenticated access to booking, enquiry, notification, and feedback endpoints
                 .requestMatchers("/api/bookings/**").authenticated()
                 .requestMatchers("/api/enquiries/**").authenticated()
                 .requestMatchers("/api/notifications/**").authenticated()
+                .requestMatchers("/api/feedback/**").authenticated()
                 // Require authentication for all other endpoints
                 .anyRequest().authenticated()
             )
@@ -62,7 +63,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:3000", "http://localhost:3001"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:3000", "http://localhost:3001", "http://localhost:8082"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

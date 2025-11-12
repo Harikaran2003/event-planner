@@ -40,13 +40,8 @@ public class EventController {
     }
 
     @PostMapping
-    public ResponseEntity<Event> createEvent(@RequestBody Event event) {
-        try {
-            Event savedEvent = eventService.saveEvent(event);
-            return ResponseEntity.ok(savedEvent);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public Event createEvent(@RequestBody Event event) {
+        return eventService.saveEvent(event);
     }
 
     @PutMapping("/{id}")

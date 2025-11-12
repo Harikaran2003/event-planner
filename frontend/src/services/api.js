@@ -1,5 +1,5 @@
 // API service for handling HTTP requests
-const API_BASE_URL = 'http://localhost:8083/api';
+const API_BASE_URL = 'http://localhost:8082/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -33,9 +33,10 @@ class ApiService {
   }
 
   static async createEvent(eventData) {
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/events`, {
       method: 'POST',
-      headers: getPublicHeaders(),
+      headers: headers,
       body: JSON.stringify(eventData),
     });
     
@@ -50,9 +51,10 @@ class ApiService {
   }
 
   static async updateEvent(id, eventData) {
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'PUT',
-      headers: getPublicHeaders(),
+      headers: headers,
       body: JSON.stringify(eventData),
     });
     
@@ -67,9 +69,10 @@ class ApiService {
   }
 
   static async deleteEvent(id) {
+    const headers = getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/events/${id}`, {
       method: 'DELETE',
-      headers: getPublicHeaders(),
+      headers: headers,
     });
     
     // Check if response is ok
@@ -303,6 +306,91 @@ class ApiService {
     const response = await fetch(`${API_BASE_URL}/notifications/${id}/mark-as-read`, {
       method: 'PUT',
       headers: headers
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
+  // Feedback
+  static async getFeedback() {
+    const headers = getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/feedback`, {
+      headers: headers
+    });
+    return response.json();
+  }
+
+  static async getFeedbackByUserId(userId) {
+    const headers = getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/feedback/user/${userId}`, {
+      headers: headers
+    });
+    return response.json();
+  }
+
+  static async createFeedback(feedbackData) {
+    const headers = getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/feedback`, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(feedbackData),
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
+  static async deleteFeedback(id) {
+    const headers = getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/feedback/${id}`, {
+      method: 'DELETE',
+      headers: headers,
+    });
+    
+    // Check if response is ok
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return response;
+  }
+
+  // User Authentication
+  static async loginUser(loginData) {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: getPublicHeaders(),
+      body: JSON.stringify(loginData),
+    });
+    
+    // Check if response is ok before trying to parse JSON
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Only try to parse JSON if there's content
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
+  }
+
+  static async registerUser(registrationData) {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: 'POST',
+      headers: getPublicHeaders(),
+      body: JSON.stringify(registrationData),
     });
     
     // Check if response is ok before trying to parse JSON

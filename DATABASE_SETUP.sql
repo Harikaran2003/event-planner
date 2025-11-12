@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (related_booking_id) REFERENCES bookings(id)
 );
 
+-- Create feedback table
+CREATE TABLE IF NOT EXISTS feedback (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    event_id BIGINT NOT NULL,
+    rating INT NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (event_id) REFERENCES events(id)
+);
+
 -- Insert sample data for packages
 INSERT INTO packages (name, description, price) VALUES
 ('Basic', 'Essential event planning services', 1500.00),

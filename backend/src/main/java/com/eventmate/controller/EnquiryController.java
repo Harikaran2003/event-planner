@@ -1,7 +1,6 @@
 package com.eventmate.controller;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -105,32 +104,5 @@ public class EnquiryController {
     public ResponseEntity<Void> deleteEnquiry(@PathVariable Long id) {
         enquiryService.deleteEnquiry(id);
         return ResponseEntity.noContent().build();
-    }
-
-    // Add this endpoint for replying to enquiries
-    @PostMapping("/{id}/reply")
-    public ResponseEntity<Notification> replyToEnquiry(@PathVariable Long id, @RequestBody Map<String, String> payload) {
-        Optional<Enquiry> enquiryOptional = enquiryService.getEnquiryById(id);
-        
-        if (!enquiryOptional.isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        Enquiry enquiry = enquiryOptional.get();
-        
-        // Update enquiry status to IN_PROGRESS
-        enquiry.setStatus("IN_PROGRESS");
-        enquiryService.saveEnquiry(enquiry);
-        
-        // Create notification for the user
-        Notification notification = new Notification();
-        notification.setUser(enquiry.getUser());
-        notification.setTitle("Response to your enquiry: " + enquiry.getSubject());
-        notification.setMessage(payload.get("message"));
-        notification.setRelatedBookingId(null); // No related booking for enquiries
-        
-        Notification savedNotification = notificationService.saveNotification(notification);
-        
-        return ResponseEntity.ok(savedNotification);
     }
 }

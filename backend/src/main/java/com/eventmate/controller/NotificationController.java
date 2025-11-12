@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.eventmate.dto.NotificationRequest;
 import com.eventmate.model.Notification;
 import com.eventmate.model.User;
 import com.eventmate.service.NotificationService;
@@ -26,7 +25,7 @@ public class NotificationController {
 
     @Autowired
     private NotificationService notificationService;
-
+    
     @Autowired
     private UserService userService;
 
@@ -36,27 +35,14 @@ public class NotificationController {
     }
 
     @GetMapping("/unread/{userId}")
-    public ResponseEntity<List<Notification>> getUnreadNotificationsByUserId(@PathVariable Long userId) {
-        // Get the currently authenticated user
-        // In a real implementation, you would get this from the security context
-        // For now, we'll just check if the user exists
+    public List<Notification> getUnreadNotificationsByUserId(@PathVariable Long userId) {
+        // Fetch the user by ID
+        // Return unread notifications for the user
         Optional<User> userOptional = userService.findById(userId);
         if (userOptional.isPresent()) {
-            return ResponseEntity.ok(notificationService.getUnreadNotificationsByUser(userOptional.get()));
+            return notificationService.getUnreadNotificationsByUser(userOptional.get());
         }
-        return ResponseEntity.ok(List.of()); // Return empty list instead of 404
-    }
-
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Notification>> getNotificationsByUserId(@PathVariable Long userId) {
-        // Get the currently authenticated user
-        // In a real implementation, you would get this from the security context
-        // For now, we'll just check if the user exists
-        Optional<User> userOptional = userService.findById(userId);
-        if (userOptional.isPresent()) {
-            return ResponseEntity.ok(notificationService.getNotificationsByUser(userOptional.get()));
-        }
-        return ResponseEntity.ok(List.of()); // Return empty list instead of 404
+        return List.of(); // Return empty list if user not found
     }
 
     @GetMapping("/{id}")
@@ -70,26 +56,8 @@ public class NotificationController {
     }
 
     @PostMapping
-    public ResponseEntity<Notification> createNotification(@RequestBody NotificationRequest notificationRequest) {
-        // Get user
-        Optional<User> userOptional = userService.findById(notificationRequest.getUserId());
-        
-        if (!userOptional.isPresent()) {
-            return ResponseEntity.badRequest().build();
-        }
-        
-        User user = userOptional.get();
-        
-        // Create notification
-        Notification notification = new Notification();
-        notification.setUser(user);
-        notification.setTitle(notificationRequest.getTitle());
-        notification.setMessage(notificationRequest.getMessage());
-        notification.setRelatedBookingId(notificationRequest.getRelatedBookingId());
-        
-        Notification savedNotification = notificationService.saveNotification(notification);
-        
-        return ResponseEntity.ok(savedNotification);
+    public Notification createNotification(@RequestBody Notification notification) {
+        return notificationService.saveNotification(notification);
     }
 
     @PutMapping("/{id}/mark-as-read")

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, Check, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ApiService from '../services/api';
 
 const SignupForm = ({ onSignup }) => {
   const [formData, setFormData] = useState({
@@ -66,25 +67,17 @@ const SignupForm = ({ onSignup }) => {
       setIsSubmitting(true);
       // Call backend API
       try {
-        const response = await fetch('http://localhost:8083/api/auth/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fullName: formData.fullName,
-            email: formData.email,
-            password: formData.password,
-            confirmPassword: formData.confirmPassword
-          }),
+        const result = await ApiService.registerUser({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword
         });
         
-        const result = await response.json();
-        
-        if (response.ok) {
+        if (result.success) {
           onSignup(formData);
         } else {
-          alert(result.error || 'Failed to register user');
+          alert(result.message || 'Failed to register user');
         }
       } catch (error) {
         alert('An error occurred during registration');

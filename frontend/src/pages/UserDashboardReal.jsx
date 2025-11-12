@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Plus, Search, Bell, User, LogOut, Menu, X, Info, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Plus, Search, Bell, User, LogOut, Menu, X, Info, CheckCircle, Clock, AlertCircle, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ApiService from '../services/api';
+import FeedbackForm from '../components/FeedbackForm';
 
 const UserDashboardReal = () => {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ const UserDashboardReal = () => {
   const [showEventEnquiryForm, setShowEventEnquiryForm] = useState(false);
   const [selectedEventForEnquiry, setSelectedEventForEnquiry] = useState(null);
   const [eventEnquiryData, setEventEnquiryData] = useState({ subject: '', message: '' });
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [selectedEventForFeedback, setSelectedEventForFeedback] = useState(null);
+  const [userFeedback, setUserFeedback] = useState([]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('currentUser'));
@@ -280,6 +284,40 @@ const UserDashboardReal = () => {
     setSelectedEvent(event);
     setBookingData({ eventId: event.id, specialRequests: '' });
     setShowBookingForm(true);
+  };
+
+  const openFeedbackForm = (event) => {
+    console.log('Opening feedback form for event:', event); // Debug log
+    setSelectedEventForFeedback(event);
+    setShowFeedbackForm(true);
+  };
+
+  const handleFeedbackSubmit = async (feedbackData) => {
+    try {
+      console.log('Submitting feedback data:', feedbackData); // Debug log
+      const feedbackWithUser = {
+        userId: currentUser.userId,
+        eventId: feedbackData.eventId,
+        rating: feedbackData.rating,
+        comment: feedbackData.comment
+      };
+      
+      const result = await ApiService.createFeedback(feedbackWithUser);
+      console.log('Feedback submission result:', result); // Debug log
+      
+      alert('Feedback submitted successfully!');
+      setShowFeedbackForm(false);
+      setSelectedEventForFeedback(null);
+      
+      // Refresh bookings to update feedback status
+      fetchUserBookings(currentUser.userId);
+      
+      // Also refresh feedback in admin dashboard
+      // We'll need to implement a way to notify admin dashboard about new feedback
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      alert('Error submitting feedback. Please try again.');
+    }
   };
 
   return (
@@ -813,6 +851,7 @@ const UserDashboardReal = () => {
                                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
                                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
                                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Special Requests</th>
+                                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Actions</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-200">
@@ -828,6 +867,17 @@ const UserDashboardReal = () => {
                                         </td>
                                         <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                           {booking.specialRequests || 'None'}
+                                        </td>
+                                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                          {booking.status === 'CONFIRMED' && (
+                                            <button
+                                              onClick={() => openFeedbackForm(booking.event)}
+                                              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                                            >
+                                              <Star className="mr-1 h-4 w-4" />
+                                              Give Feedback
+                                            </button>
+                                          )}
                                         </td>
                                       </tr>
                                     ))}
@@ -870,6 +920,31 @@ const UserDashboardReal = () => {
               </div>
             </div>
           </main>
+          
+          {/* Feedback Form Modal */}
+          {showFeedbackForm && (
+            <div className="fixed inset-0 z-50 overflow-y-auto">
+              <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowFeedbackForm(false)}></div>
+                <div className="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                  <div className="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
+                    <div className="sm:flex sm:items-start">
+                      <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 className="text-lg font-medium leading-6 text-gray-900">Feedback for: {selectedEventForFeedback?.name}</h3>
+                        <div className="mt-2">
+                          <FeedbackForm 
+                            eventId={selectedEventForFeedback?.id}
+                            onSubmit={handleFeedbackSubmit}
+                            onCancel={() => setShowFeedbackForm(false)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

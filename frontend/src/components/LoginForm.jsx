@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ApiService from '../services/api';
 
 const LoginForm = ({ onLogin }) => {
   const [formData, setFormData] = useState({
@@ -52,18 +53,10 @@ const LoginForm = ({ onLogin }) => {
       setIsSubmitting(true);
       // Call backend API
       try {
-        const response = await fetch('http://localhost:8083/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: formData.email,
-            password: formData.password
-          }),
+        const result = await ApiService.loginUser({
+          email: formData.email,
+          password: formData.password
         });
-        
-        const result = await response.json();
         
         if (result.success) {
           onLogin(result); // Pass the backend response to the handler
